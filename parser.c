@@ -21,7 +21,11 @@ static TokenNodo *siguiente;
 void next(TokenNodo *lista) {
   if (lista != NULL) {
     siguiente = lista;
-  } else {
+  } 
+  else if (siguiente == NULL) {
+    return;
+  }
+  else {
     siguiente = siguiente->next;
   }
   return;
@@ -33,6 +37,7 @@ void next(TokenNodo *lista) {
  * retorna true Sino, no se hace nada y se retorna false
  */
 bool match(TipoDeToken tipo) {
+  if (siguiente == NULL) return false;
   if (siguiente->tipo == tipo)
     return true;
   else
@@ -45,7 +50,7 @@ bool match(TipoDeToken tipo) {
  * De lo contrario, no añade nada
  */
 void error(String mensaje, ASTTree arbol) {
-  printf((String)mensaje);
+  printf("%s\n", (String)mensaje);
   if (arbol != NULL)
     destruir_arbol(arbol);
   return;
@@ -95,6 +100,21 @@ ASTTree listas();
  */
 ASTTree lista();
 
+/**
+ * Def ::= String que se guardará en un Hash después
+ */
+ASTNodo* def(String definicion);
+
+/**
+ * Primitiva ::= 0i | 0d | Si | Sd | Di | Dd
+ */
+ASTNodo* primitiva(String funcion);
+
+/**
+ * Quit: Comando para cerrar todo
+ */
+ASTTree quit();
+
 /*---------------------------------------------------------------*/
 
 /**
@@ -113,36 +133,51 @@ ASTTree parse(TokenList tokens) {
   switch (siguiente->tipo) {
   case TOKEN_DEFF:
     ast = deff();
-    if (!match(TOKEN_PUNTO_COMA))
-      destruir_arbol(ast);
+    if (!match(TOKEN_PUNTO_COMA)) {
+      if (siguiente == NULL) error("Falta el punto y coma para finalizar el comando", ast);
+      else error("Error en la definición de la función. Intente de nuevo", ast);
+      ast = NULL;
+    }
     next(NULL);
     break;
 
   case TOKEN_DEFL:
     ast = defl();
-    if (!match(TOKEN_PUNTO_COMA))
-      destruir_arbol(ast);
+    if (!match(TOKEN_PUNTO_COMA)) {
+      if (siguiente == NULL) error("Falta el punto y coma para finalizar el comando", ast);
+      else error("Error en la definición de la lista. Intente de nuevo", ast); 
+      ast = NULL;
+    }
     next(NULL);
     break;
 
   case TOKEN_APPLY:
     ast = apply();
-    if (!match(TOKEN_PUNTO_COMA))
-      destruir_arbol(ast);
+    if (!match(TOKEN_PUNTO_COMA)) {
+      if (siguiente == NULL) error("Falta el punto y coma para finalizar el comando", ast);
+      else error("Error en la definición de la aplicación. Intente de nuevo", ast);
+      ast = NULL;
+    }
     next(NULL);
     break;
 
   case TOKEN_SEARCH:
     ast = search();
-    if (!match(TOKEN_PUNTO_COMA))
-      destruir_arbol(ast);
+    if (!match(TOKEN_PUNTO_COMA)) {
+      if (siguiente == NULL) error("Falta el punto y coma para finalizar el comando", ast);
+      else error("Error en la definición de la búsqueda. Intente de nuevo", ast);
+      ast = NULL;
+    }
     next(NULL);
     break;
 
   case TOKEN_QUIT:
     ast = quit();
-    if (!match(TOKEN_PUNTO_COMA))
-      destruir_arbol(ast);
+    if (!match(TOKEN_PUNTO_COMA)) {
+      if (siguiente == NULL) error("Falta el punto y coma para finalizar el comando", ast);
+      else error("Error en el comando 'quit'. Intente de nuevo", ast);
+      ast = NULL;
+    }
     next(NULL);
     break;
   default:
@@ -152,8 +187,9 @@ ASTTree parse(TokenList tokens) {
   }
 
   if (ast == NULL) {
-    printf("Parece que hubo un error con el parsing. Intente de nuevo");
+    printf("Parece que hubo un error con el parsing. Intente de nuevo\n");
   } else {
+    printf("Parsing con éxito\n");
     siguiente = NULL;
   }
 
@@ -177,13 +213,13 @@ ASTTree deff() {
 
   // Luego, se chequea por una definicion apropiada
   if (!match(TOKEN_DEF)) {
-    error("Definición no válida\n", arbolDeff);
+    error("Definición no válida", arbolDeff);
     return NULL;
   }
 
   ASTNodo *nodoDef = def(siguiente->token);
   if (nodoDef == NULL) {
-    error("Definición incorrecta\n", arbolDeff);
+    error("Definición incorrecta", arbolDeff);
     return NULL;
   }
   anadir_hijo(arbolDeff, nodoDef);
@@ -191,7 +227,7 @@ ASTTree deff() {
 
   // Sigue el chequeo del igual
   if (!match(TOKEN_IGUAL)) {
-    error("Falta el símbolo '='\n", arbolDeff);
+    error("Falta el símbolo '='", arbolDeff);
     return NULL;
   }
   next(NULL);
@@ -202,15 +238,18 @@ ASTTree deff() {
   // En caso de detectar un '<', empezar a considerar una función repetición
   if (match(TOKEN_ANG_ABRE)) {
     ASTTree arbolRep = crear_arbol();
+    arbolRep = crear_nodo_arbol(NULL, AST_REP);
+
     anadir_hijo(arbolRep, arbolFunciones);
     anadir_hijo(arbolDeff, arbolRep);
+
     next(NULL);
 
     ASTTree arbolFunciones2 = funcs();
     anadir_hijo(arbolRep, arbolFunciones2);
 
     if (!match(TOKEN_ANG_CIERRA)) {
-      error("Falta cerrar con '>'. Intente de nuevo\n", arbolDeff);
+      error("Falta cerrar con '>'. Intente de nuevo", arbolDeff);
       return NULL;
     }
     next(NULL);
@@ -240,34 +279,33 @@ ASTTree defl() {
   next(NULL);
 
   // Luego se revisa si se tiene una definición correcta
-  ASTNodo *nodoDef = def(siguiente->token);
-  if (nodoDef == NULL) {
-    error("Definición incorrecta\n", arbolDefl);
+  if(!match(TOKEN_DEF)) {
+    error("Definición incorrecta", arbolDefl);
     return NULL;
   }
+  ASTNodo *nodoDef = def(siguiente->token);
+
   anadir_hijo(arbolDefl, nodoDef);
   next(NULL);
 
   // Luego, se verifica que haya un símbolo '='
   if (!match(TOKEN_IGUAL)) {
-    error("Falta el símbolo '='\n", arbolDefl);
+    error("Falta el símbolo '='", arbolDefl);
     return NULL;
   }
   next(NULL);
 
   // Se verifica que se abra con un '['
   if (!match(TOKEN_COR_ABRE)) {
-    error("No se ha abierto la lista con '['\n", arbolDefl);
+    error("No se ha abierto la lista con '['", arbolDefl);
     return NULL;
   }
   next(NULL);
 
   ASTNodo* arbolElementos = elementos();
   anadir_hijo(arbolDefl, arbolElementos);
-  next(NULL);
 
   if(!match(TOKEN_COR_CIERRA)) {
-    error("No se ha cerrado con ']'\n", arbolDefl);
     return NULL;
   }
   next(NULL);
@@ -300,13 +338,14 @@ ASTTree apply() {
     next(NULL);
   }
   else {
-    error("Definición de función no válida\n", arbolApply);
+    error("Definición de función no válida", arbolApply);
     return NULL;
   }
 
   // Luego, verifica si es un tipo de lista válida
   if(match(TOKEN_DEF)) {
     ASTNodo* nodoDef = def(siguiente->token);
+    anadir_hijo(arbolApply, nodoDef);
     next(NULL);
   }
   else if(match(TOKEN_COR_ABRE)) {
@@ -314,7 +353,6 @@ ASTTree apply() {
 
     ASTTree arbolElementos = elementos();
     anadir_hijo(arbolApply, arbolElementos);
-    next(NULL);
 
     if (!match(TOKEN_COR_CIERRA)) {
       error("No se ha cerrado con ']'", arbolApply);
@@ -341,20 +379,27 @@ ASTTree search() {
     return NULL;
   ASTTree arbolSearch = crear_arbol();
   arbolSearch = crear_nodo_arbol(NULL, AST_SEARCH);
+  next(NULL);
 
   if(!match(TOKEN_LLAVE_ABRE)) {
-    error("No se colocó las funciones en '{}'\n", arbolSearch);
+    error("No se colocó las funciones en '{}'", arbolSearch);
     return NULL;
   }
+  next(NULL);
 
   ASTTree arbolListas = listas();
+  if (arbolListas == NULL) {
+    error("Error en definición de listas", arbolSearch);
+    return NULL;
+  }
   anadir_hijo(arbolSearch, arbolListas);
   
   if(!match(TOKEN_LLAVE_CIERRA)) {
-    error("No se cerró con '}'\n", arbolSearch);
+    error("No se cerró con '}'", arbolSearch);
     return NULL;
   }
 
+  next(NULL);
   return arbolSearch;
 }
 
@@ -367,30 +412,21 @@ ASTTree search() {
 ASTTree funcs() {
   ASTTree nodoFuncion = crear_arbol();
 
-  if (match(TOKEN_DEF)) {
-    nodoFuncion = def(siguiente->token);
+  if(match(TOKEN_DEF)) {
+    nodoFuncion = crear_nodo_arbol(siguiente->token, AST_DEF);
     next(NULL);
-
-    ASTTree nodoSiguiente = funcs();
-    anadir_hijo(nodoFuncion, nodoSiguiente);
-
-    return nodoFuncion;
   }
-
-  else if (match(TOKEN_PRIMITIVA)) {
-    nodoFuncion = primitiva(siguiente->token);
+  else if(match(TOKEN_PRIMITIVA)) {
+    nodoFuncion = crear_nodo_arbol(siguiente->token, AST_PRIMITIVA);
     next(NULL);
-
-    ASTTree nodoSiguiente = funcs();
-    anadir_hijo(nodoFuncion, nodoSiguiente);
-
-    return nodoFuncion;
   }
+  else return nodoFuncion;
 
-  else {
-    return nodoFuncion;
+  ASTTree nodoFunciones = funcs();
+  if (nodoFunciones != NULL) {
+    anadir_hijo(nodoFuncion, nodoFunciones);
   }
-  
+  return nodoFuncion;
 }
 
 /**
@@ -407,9 +443,10 @@ ASTTree elementos() {
   }
 
   if (match(TOKEN_COMA)) {
-    ASTTree arbolDigitos = elementos();
-    anadir_hijo(arbolDigitos, nodoDigito);
     next(NULL);
+    ASTTree arbolDigitos = elementos();
+    if (arbolDigitos != NULL)
+      anadir_hijo(arbolDigitos, nodoDigito);
 
     return arbolDigitos;
   }
@@ -432,12 +469,31 @@ ASTTree listas() {
   anadir_hijo(arbolListas, nodoLista1);
   next(NULL);
 
-  ASTNodo* nodoLista2 = lista();
-  anadir_hijo(arbolListas, nodoLista2);
+  if (nodoLista1 != NULL && nodoLista1->tipo == AST_ERROR) {
+    error("Hubo un error en la definición de lista", arbolListas);
+    return NULL;
+  }
+  else if (!match(TOKEN_COMA)) {
+    error("Cada lista se debe separar con una coma", arbolListas);
+    return NULL;
+  }
   next(NULL);
 
-  if (match(TOKEN_COMA)) {
+  ASTNodo* nodoLista2 = lista();
+  anadir_hijo(arbolListas, nodoLista2);
+  if (nodoLista2->tipo == AST_ERROR) {
+    error("Hubo un error en la definición de lista", arbolListas);
+    return NULL;
+  }
+  next(NULL);
+
+  if (match(TOKEN_PUNTO_COMA)) {
+    next(NULL);
     ASTTree arbolListasSig = listas();
+    if (arbolListasSig == NULL) {
+      destruir_arbol(arbolListas);
+      return NULL;
+    }
     anadir_hijo(arbolListas, arbolListasSig);
   }
 
@@ -454,20 +510,52 @@ ASTTree lista() {
   ASTTree arbolLista = crear_arbol();
   
   if(match(TOKEN_DEF)) {
-    arbolLista = def();
+    arbolLista = def(siguiente->token);
   }
   else if (match(TOKEN_COR_ABRE)) {
     next(NULL);
     arbolLista = elementos();
     if (!match(TOKEN_COR_CIERRA)) {
-      error("No se cerró con ']'\n", arbolLista);
+      error("No se cerró con ']'", arbolLista);
+      arbolLista = crear_arbol();
+      arbolLista = crear_nodo_arbol(NULL, AST_ERROR);
       return NULL;
     }
   }
   else {
-    error("No se ha definido una lista adecuadamente\n", arbolLista);
+    error("No se ha definido una lista adecuadamente", arbolLista);
     return NULL;
   }
 
   return arbolLista;
+}
+
+/**
+ * def: String -> ASTNodo*
+ * Crea un nodo con una definición que incluye un String
+ */
+ASTNodo* def(String definicion) {
+  ASTNodo* nodoDef = crear_nodo_arbol(definicion, AST_DEF);
+  return nodoDef;
+}
+
+/**
+ * primitiva: String -> ASTNodo*
+ * Crea un nodo con un tipo de función primitiva
+ */
+ASTNodo* primitiva(String funcion) {
+  ASTNodo* nodoPrim = crear_nodo_arbol(funcion, AST_PRIMITIVA);
+  return nodoPrim;
+}
+
+/**
+ * quit: void -> ASTTree
+ * Crea un árbol con un único nodo de tipo QUIT
+ */
+ASTTree quit() {
+  if(!match(TOKEN_QUIT)) return NULL;
+  ASTTree arbolQuit = crear_arbol();
+  arbolQuit = crear_nodo_arbol(NULL, AST_QUIT);
+  next(NULL);
+  return arbolQuit;
 }

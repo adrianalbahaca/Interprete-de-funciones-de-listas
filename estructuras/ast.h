@@ -5,7 +5,6 @@
 /**
  * Se define los tipos de nodos para el AST
  */
-
 typedef enum {
     /* Estos son los tipos de nodo raíz */
     AST_DEFF, AST_DEFL, AST_APPLY, AST_SEARCH, AST_QUIT,
@@ -19,11 +18,13 @@ typedef enum {
 } TipoDeNodo;
 
 /**
- * 
+ * Para el recorrido del árbol, se define los tres tipos de recorridos posibles
  */
 typedef enum {
-    INORDEN, POSORDEN
+    PREORDER, INORDER, POSORDER
 } TipoDeRecorrido;
+
+typedef void (*FuncionVisitante)(String lexema, TipoDeNodo tipo);
 
 /**
  * Se define la cant. de hijos posibles que puede tener cada nodo
