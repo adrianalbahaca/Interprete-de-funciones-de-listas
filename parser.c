@@ -160,6 +160,9 @@ ASTTree elementos() {
       nodoElemento = error(NULL, nodoElemento);
     }
   }
+  else if (!match(TOKEN_COR_CIERRA)) {
+    nodoElemento = error("ERROR: Falta la ',' entre dígitos", nodoElemento);
+  }
 
   return nodoElemento;
 }
