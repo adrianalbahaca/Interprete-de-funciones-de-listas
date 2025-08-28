@@ -132,13 +132,44 @@ ASTTree funcs() {
 }
 
 /**
+ * elementos: void -> ASTTree
+ * Elementos ::= DIGITO COMA Elementos | DIGITO | e
+ */
+ASTTree elementos() {
+  // DIGITO COMA Elementos | DIGITO | e
+  ASTTree nodoElemento = crear_arbol();
+  if(match(TOKEN_DIGITO)) {
+    nodoElemento = crear_nodo_arbol(siguiente->token, AST_DIGITO);
+    next(NULL);
+  }
+  else if (match(TOKEN_ERROR)) {
+    nodoElemento = error("ERROR: definición errónea de un elemento", nodoElemento);
+    return nodoElemento;
+  }
+  else if(!match(TOKEN_COR_CIERRA)) {
+    nodoElemento = error("ERROR: definición errónea de un elemento", nodoElemento);
+    return nodoElemento;
+  }
+
+  // COMA Elementos
+  if (match(TOKEN_COMA)) {
+    next(NULL);
+    ASTTree arbolElementos = elementos();
+    anadir_hijo(nodoElemento, arbolElementos);
+    if (arbolElementos->tipo == AST_ERROR) {
+      nodoElemento = error(NULL, nodoElemento);
+    }
+  }
+
+  return nodoElemento;
+}
+
+/**
  * deff: void -> ASTTree
- * Deff ::= "deff" DEF IGUAL Funcs | "deff" DEF IGUAL Funcs "<" Funcs ">" Funcs
+ * Deff ::= "deff" DEF IGUAL Funcs PUNTO_COMA | "deff" DEF IGUAL Funcs "<" Funcs ">" Funcs PUNTO_COMA
  */
 ASTTree deff() {
-  if(!match(TOKEN_DEFF)) {
-    return NULL;
-  }
+  next(NULL);
   ASTTree arbolDeff = crear_nodo_arbol(NULL, AST_DEFF);
   next(NULL);
 
@@ -158,7 +189,7 @@ ASTTree deff() {
 
   // IGUAL Funcs | IGUAL Funcs "<" Funcs ">" Funcs
   if(!match(TOKEN_IGUAL)) {
-    error("ERROR: Falta el símbolo '='", arbolDeff);
+    arbolDeff = error("ERROR: Falta el símbolo '='", arbolDeff);
     return arbolDeff;
   }
   next(NULL);
@@ -211,6 +242,62 @@ ASTTree deff() {
 
   return arbolDeff;
 }
+
+/**
+ * defl: void -> ASTTree
+ * Defl ::= "defl" DEF IGUAL COR_ABRE Elementos COR_CIERRA PUNTO_COMA
+ */
+ASTTree defl() {
+  // "defl" DEF IGUAL COR_ABRE Elementos COR_CIERRA PUNTO_COMA
+  next(NULL);
+  ASTTree arbolDefl = crear_arbol();
+  arbolDefl = crear_nodo_arbol(NULL, AST_DEFL);
+
+  // DEF IGUAL COR_ABRE Elementos COR_CIERRA PUNTO_COMA
+  ASTNodo* nodoDef = def();
+  anadir_hijo(arbolDefl, nodoDef);
+  
+  if (nodoDef == NULL) {
+    arbolDefl = error("ERROR: Dato incorrecto para la definición", arbolDefl);
+    return arbolDefl;
+  }
+  else if (nodoDef->tipo == AST_ERROR) {
+    arbolDefl = error(NULL, arbolDefl);
+    return arbolDefl;
+  }
+  next(NULL);
+
+  // IGUAL COR_ABRE Elementos COR_CIERRA PUNTO_COMA
+  if(!match(TOKEN_IGUAL)) {
+    arbolDefl = error("ERROR: Falta el símbolo '='", arbolDefl);
+    return arbolDefl;
+  }
+  next(NULL);
+
+  // COR_ABRE Elementos COR_CIERRA PUNTO_COMA
+  if(!match(TOKEN_COR_ABRE)) {
+    arbolDefl = error("ERROR: Falta iniciar con '['", arbolDefl);
+    return arbolDefl;
+  }
+  next(NULL);
+
+  // Elementos COR_CIERRA PUNTO_COMA
+  ASTTree arbolElementos = elementos();
+  anadir_hijo(arbolDefl, arbolElementos);
+  if(arbolElementos != NULL && arbolElementos->tipo == AST_ERROR) {
+    arbolDefl = error(NULL, arbolDefl);
+    return arbolDefl;
+  }
+  
+  // COR_CIERRA PUNTO_COMA
+  if(!match(TOKEN_COR_CIERRA)) {
+    arbolDefl = error("ERROR: Falta cerrar con ']'", arbolDefl);
+    return arbolDefl;
+  }
+  next(NULL);
+
+  return arbolDefl;
+}
 /*---------------------------------------------------------------*/
 
 /**
@@ -227,23 +314,34 @@ ASTTree parse(TokenList tokens) {
 
   // Luego, empezamos a determinar el caso que tenemos
   switch (siguiente->tipo) {
-  case TOKEN_DEFF:
-    ast = deff();
-    if (ast->tipo == AST_ERROR) {
-      destruir_arbol(ast);
-      ast = NULL;
-    }
-    else if (!match(TOKEN_PUNTO_COMA)) {
-      ast = error("Falta el punto y coma para finalizar el comando", ast);
-    }
-    next(NULL);
-    break;
-
-  
-  default:
-    error("ERROR: Comando no válido. Intente de nuevo", ast);
-    return NULL;
-    break;
+    case TOKEN_DEFF:
+      ast = deff();
+      if (ast->tipo == AST_ERROR) {
+        destruir_arbol(ast);
+        ast = NULL;
+      }
+      else if (!match(TOKEN_PUNTO_COMA)) {
+        ast = error("Falta el punto y coma para finalizar el comando", ast);
+      }
+      next(NULL);
+      break;
+    
+    case TOKEN_DEFL:
+      ast = defl();
+      if (ast->tipo == AST_ERROR) {
+        destruir_arbol(ast);
+        ast = NULL;
+      }
+      else if (!match(TOKEN_PUNTO_COMA)) {
+        ast = error("Falta el punto y coma para finalizar el comando", ast);
+      }
+      next(NULL);
+      break;
+    
+    default:
+      error("ERROR: Comando no válido. Intente de nuevo", ast);
+      return NULL;
+      break;
   }
 
   if (ast == NULL || ast->tipo == AST_ERROR) {
