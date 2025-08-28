@@ -237,5 +237,7 @@ TokenList tokenize(String tokens) {
     tipo = tipo_token(token);
   }
 
+  liberar_string(tokens);
+
   return list;
 }

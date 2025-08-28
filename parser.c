@@ -174,7 +174,6 @@ ASTTree elementos() {
 ASTTree deff() {
   next(NULL);
   ASTTree arbolDeff = crear_nodo_arbol(NULL, AST_DEFF);
-  next(NULL);
 
   // DEF IGUAL Funcs | DEF IGUAL Funcs "<" Funcs ">" Funcs
   ASTNodo* nodoDef = def();
