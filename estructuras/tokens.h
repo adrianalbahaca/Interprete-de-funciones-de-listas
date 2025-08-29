@@ -21,7 +21,6 @@ typedef struct _TokenNodo {
   String token;
   TipoDeToken tipo;
   struct _TokenNodo *next;
-  struct _TokenNodo *prev;
 } TokenNodo;
 
 /**

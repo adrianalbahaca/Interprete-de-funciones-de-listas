@@ -32,12 +32,10 @@ TokenList anadir_token(TokenList l, String token, TipoDeToken tipo) {
 
   // Caso 1: Lista vacía
   if (l->head == NULL && l->tail == NULL) {
-    nodo->prev = NULL;
     l->head = l->tail = nodo;
   }
   else { // Caso 2: Lista con elementos
     l->tail->next = nodo;
-    nodo->prev = l->tail;
     l->tail = nodo;
   }
 
