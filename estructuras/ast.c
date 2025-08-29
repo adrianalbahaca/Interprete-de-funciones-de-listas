@@ -22,6 +22,7 @@ ASTNodo* crear_nodo_arbol(String lexema, TipoDeNodo tipo) {
         nodo->hijos[i] = NULL;
     }
     if (lexema != NULL) nodo->lexema = str_dup(lexema);
+    else nodo->lexema = NULL;
     nodo->tipo = tipo;
     nodo->num_hijos = 0;
     return nodo;
