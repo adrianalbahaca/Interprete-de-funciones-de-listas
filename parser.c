@@ -198,7 +198,11 @@ ASTTree deff() {
 
   // Funcs | Funcs "<" Funcs ">" Funcs
   ASTTree arbolFuncs = funcs();
-  if (arbolFuncs->tipo == AST_ERROR) {
+  if (arbolFuncs == NULL) {
+    arbolDeff = error("ERROR: Definición inapropiada de funciones", arbolDeff);
+    return arbolDeff;
+  }
+  else if (arbolFuncs->tipo == AST_ERROR) {
     destruir_arbol(arbolFuncs);
     arbolDeff = error(NULL, arbolDeff);
     return arbolDeff;
