@@ -300,6 +300,60 @@ ASTTree defl() {
 
   return arbolDefl;
 }
+
+/**
+ * apply: void -> ASTTree
+ * Apply ::= "apply" DEF DEF | "apply" PRIMITIVA DEF | "apply" DEF LISTA | "apply" PRIMITIVA LISTA
+ */
+ASTTree apply() {
+  next(NULL);
+  ASTTree arbolApply = crear_arbol();
+  arbolApply = crear_nodo_arbol(NULL, AST_APPLY);
+
+  if (match(TOKEN_DEF)) {
+    ASTNodo* nodoDef = def();
+    anadir_hijo(arbolApply, nodoDef);
+  }
+  else if (match(TOKEN_PRIMITIVA)) {
+    ASTNodo* nodoPrim = primitiva();
+    anadir_hijo(arbolApply, nodoPrim);
+  }
+  else {
+    arbolApply = error("ERROR: Definición de función no válida", arbolApply);
+    return arbolApply;
+  }
+
+  next(NULL);
+
+  if (match(TOKEN_DEF)) {
+    ASTNodo* nodoDef2 = def();
+    anadir_hijo(arbolApply, nodoDef2);
+    next(NULL);
+  }
+  else if (match(TOKEN_COR_ABRE)) {
+    next(NULL);
+
+    ASTTree arbolElementos = elementos();
+    anadir_hijo(arbolApply, arbolElementos);
+
+    if(arbolElementos != NULL && arbolElementos->tipo == AST_ERROR) {
+      arbolApply = error(NULL, arbolApply);
+      return arbolApply;
+    }
+
+    if(!match(TOKEN_COR_CIERRA)) {
+      arbolApply = error("ERROR: Falta cerrar con ']'", arbolApply);
+      return arbolApply;
+    }
+    next(NULL);
+  }
+  else {
+    arbolApply = error("ERROR: Definición de lista no válida", arbolApply);
+    return arbolApply;
+  }
+
+  return arbolApply;
+}
 /*---------------------------------------------------------------*/
 
 /**
@@ -339,10 +393,21 @@ ASTTree parse(TokenList tokens) {
       }
       next(NULL);
       break;
+
+      case TOKEN_APPLY:
+      ast = apply();
+      if (ast->tipo == AST_ERROR) {
+        destruir_arbol(ast);
+        ast = NULL;
+      }
+      else if (!match(TOKEN_PUNTO_COMA)) {
+        ast = error("Falta el punto y coma para finalizar el comando", ast);
+      }
+      next(NULL);
+      break;
     
     default:
-      error("ERROR: Comando no válido. Intente de nuevo", ast);
-      return NULL;
+      ast = error("ERROR: Comando no válido. Intente de nuevo", ast);
       break;
   }
 
